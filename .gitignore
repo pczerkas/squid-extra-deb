@@ -1,0 +1,5 @@
+__build*
+*.key
+*.passphrase
+local-build-in-docker.sh
+local-build-in-host.sh

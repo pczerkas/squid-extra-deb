@@ -1,0 +1,22 @@
+--- debian/control
++++ debian/control
+@@ -13,7 +13,7 @@
+ # The compiler dependencies are relevant for backporting.
+ 	, g++ (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
+ 	, gcc (>= 4.9) <!cross> | clang (>= 3.7) <!cross>
+-	, debhelper-compat (= 13)
++	, debhelper-compat (= 12)
+     , lsb-release
+ 	, dh-apparmor
+ 	, libcppunit-dev
+--- debian/rules
++++ debian/rules
+@@ -60,6 +60,8 @@
+ 		--enable-icmp \
+ 		--enable-zph-qos \
+ 		--enable-ecap \
++		--enable-ssl \
++		--with-openssl \
+ 		--disable-translation \
+ 		--with-swapdir=/var/spool/squid \
+ 		--with-logdir=/var/log/squid \

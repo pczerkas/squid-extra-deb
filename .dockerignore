@@ -1,0 +1,6 @@
+*
+!docker/
+!patches
+!configure-squid-ca.sh
+!Dockerfile
+!squid-deb.sh

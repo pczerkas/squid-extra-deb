@@ -1,0 +1,84 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "trigger"'
+      when: always
+    - when: never
+
+stages:
+  - build
+
+variables:
+  IMAGE_NAME_PREFIX: docker.pczerkas.info/pcode-pl/squid-extra-deb
+
+  # defines target squid version
+  DISTRO:
+    value: "ubuntu"
+    options:
+      - "ubuntu"
+    description: "Distribution"
+  RELEASE:
+    value: "focal"
+    options:
+      - "focal"
+      - "jammy"
+    description: "Distribution Version"
+  TARGET_SQUID_VERSION:
+    value: "6.5-1"
+    options:
+      - "5.7-2"
+      - "6.5-1"
+    description: "Squid Version"
+
+  # defines new squid version
+  NEW_SQUID_VERSION:
+    value: "6.5-1ubuntu1+ssl"
+    options:
+      - "5.7-2ubuntu1+ssl"
+      - "6.5-1ubuntu1+ssl"
+    description: "New Squid Version"
+
+  ARCH:
+    value: "linux/amd64"
+    options:
+      - "linux/amd64"
+      - "linux/arm64"
+    description: "Architecture"
+
+  # defines squid proxy to be used during build
+  SQUID_HOST: squid.int.pczerkas.info
+  SQUID_HTTP_PORT: 3128
+  SQUID_HTTPS_PORT: 4128
+
+  CI_DEBUG_SERVICES: "true"
+
+build:
+  stage: build
+  # only:
+  #   - tags
+  # except:
+  #   - branches
+  image:
+    name: docker:20.10.24-git
+    pull_policy: if-not-present
+  services:
+    - name: docker:20.10.24-dind
+      command: ["--tls=false"] # to ommit 15s delay
+  before_script:
+    - apk add --update curl && rm -rf /var/cache/apk/*
+  retry: 2
+  script:
+    - |
+      # echo "GitLab CI/CD | Print all environment variables"
+      # env
+
+      docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+
+      DOCKER_BUILDKIT=1 docker buildx build \
+        -f docker/$DISTRO-$RELEASE/Dockerfile \
+        --build-arg ARCH=${ARCH} \
+        --tag ${IMAGE_NAME_PREFIX}/squid-extra-${MAGENTO_EDITION}-${MAGENTO_VERSION}:latest \
+        --platform ${ARCH} \
+        .
+      #docker push ${IMAGE_NAME_PREFIX}/magento-base-${MAGENTO_EDITION}-${MAGENTO_VERSION}:latest
