@@ -13,5 +13,7 @@ sudo apt update
 
 sudo apt-get -y install squid-openssl=6.5-1ubuntu1+ssl+extra # for Ubuntu Jammy (22.04)
 // or
+sudo apt-get -y install squid-openssl=6.5-1ubuntu8+ssl+extra # for Ubuntu Focal (20.04)
+// or
 sudo apt-get -y install squid-openssl=5.7-2ubuntu1+ssl+extra # for Ubuntu Focal (20.04)
 ```

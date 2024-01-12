@@ -18,6 +18,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ARG PRIVATE_GPG_KEY
 ARG PRIVATE_GPG_KEY_PASSPHRASE
+ARG INSTALL_TOOLCHAIN_PPA
+ARG TOOLCHAIN_CXX_VERSION
 
 ENV http_proxy=http://$SQUID_HOST:$SQUID_HTTP_PORT
 ENV https_proxy=http://$SQUID_HOST:$SQUID_HTTPS_PORT
@@ -46,6 +48,14 @@ RUN [ ! -z "$SQUID_HOST" ] \
     && echo "Acquire::https::Proxy \"http://$SQUID_HOST:$SQUID_HTTPS_PORT\";" >> /etc/apt/apt.conf.d/00proxy \
     && cat /etc/apt/apt.conf.d/00proxy \
     || [ -z "$SQUID_HOST" ] && true
+
+# install toolchain ppa
+RUN [ ! -z "$INSTALL_TOOLCHAIN_PPA" ] \
+    && apt-get -y install software-properties-common \
+    && add-apt-repository ppa:ubuntu-toolchain-r/test \
+    && apt-get -y update \
+    && apt-get -y install gcc-$TOOLCHAIN_CXX_VERSION g++-$TOOLCHAIN_CXX_VERSION \
+    || [ -z "$INSTALL_TOOLCHAIN_PPA" ] && true
 
 # install deb build tools
 RUN apt-get -y install ubuntu-dev-tools

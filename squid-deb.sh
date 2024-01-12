@@ -56,7 +56,7 @@ echo "$PRIVATE_GPG_KEY" | gpg --import -a --no-tty --batch --yes
 # debuild --no-lintian -S -d -- binary
 
 # build source
-debuild --no-lintian -S -d -p"gpg --batch --passphrase $PRIVATE_GPG_KEY_PASSPHRASE --pinentry-mode loopback"
+debuild --no-lintian -S -sd -p"gpg --batch --passphrase $PRIVATE_GPG_KEY_PASSPHRASE --pinentry-mode loopback"
 
 # push ppa to launchpad
 dput -f ppa:pczerkas/squid-extra ../squid*+extra_source.changes 2>&1
