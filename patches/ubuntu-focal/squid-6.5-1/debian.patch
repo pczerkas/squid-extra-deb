@@ -31,12 +31,24 @@
  CXX_FOR_BUILD ?= $(CXX)
 
  INSTALLDIR := $(CURDIR)/debian/tmp
-@@ -50,6 +51,8 @@
+@@ -50,6 +51,9 @@
  		--enable-icmp \
  		--enable-zph-qos \
  		--enable-ecap \
 +		--enable-ssl \
++		--enable-ssl-crtd \
 +		--with-openssl \
  		--disable-translation \
  		--with-swapdir=/var/spool/squid \
  		--with-logdir=/var/log/squid \
+@@ -81,9 +85,7 @@
+ 	#done
+ 	dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS} \
+ 		--with-gnutls
+-	cd debian/build-openssl && dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS} \
+-		--with-openssl \
+-		--enable-ssl-crtd
++	cd debian/build-openssl && dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS}
+
+ override_dh_auto_build:
+ 	dh_auto_build
