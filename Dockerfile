@@ -12,6 +12,7 @@ ARG NEW_SQUID_VERSION
 ARG SQUID_HOST
 ARG SQUID_HTTP_PORT
 ARG SQUID_HTTPS_PORT
+ARG NO_PROXY
 
 # to disable interactive prompts during package installation
 ARG DEBIAN_FRONTEND=noninteractive
@@ -23,6 +24,7 @@ ARG TOOLCHAIN_CXX_VERSION
 
 ENV http_proxy=http://$SQUID_HOST:$SQUID_HTTP_PORT
 ENV https_proxy=http://$SQUID_HOST:$SQUID_HTTPS_PORT
+ENV no_proxy=$NO_PROXY
 ENV HOME /root
 
 SHELL ["/bin/bash", "-c"]
@@ -43,6 +45,7 @@ RUN [ ! -z "$SQUID_HOST" ] \
     && /opt/bin/configure-squid-ca.sh \
     && echo "export http_proxy=http://$SQUID_HOST:$SQUID_HTTP_PORT" >> /etc/profile \
     && echo "export https_proxy=http://$SQUID_HOST:$SQUID_HTTPS_PORT" >> /etc/profile \
+    && echo "export no_proxy='$NO_PROXY'" >> /etc/profile \
     && mkdir -p /etc/apt/apt.conf.d \
     && echo "Acquire::http::Proxy \"http://$SQUID_HOST:$SQUID_HTTP_PORT\";" > /etc/apt/apt.conf.d/00proxy \
     && echo "Acquire::https::Proxy \"http://$SQUID_HOST:$SQUID_HTTPS_PORT\";" >> /etc/apt/apt.conf.d/00proxy \
