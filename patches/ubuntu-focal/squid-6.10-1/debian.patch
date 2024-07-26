@@ -1,0 +1,54 @@
+--- debian/control
++++ debian/control
+@@ -11,9 +11,9 @@
+ 	, libltdl-dev
+ 	, pkg-config
+ # The compiler dependencies are relevant for backporting.
+-	, g++ (>= 5) <!cross> | clang (>= 3.8) <!cross>
+-	, gcc (>= 5) <!cross> | clang (>= 3.8) <!cross>
+-	, debhelper-compat (= 13)
++	, g++-13 (>= 11) <!cross> | clang (>= 3.8) <!cross>
++	, gcc-13 (>= 11) <!cross> | clang (>= 3.8) <!cross>
++	, debhelper-compat (= 12)
+ 	, lsb-release
+ 	, dh-apparmor
+ 	, libcppunit-dev
+@@ -31,6 +31,8 @@
+ 	, libxml2-dev
+ 	, nettle-dev
+ 	, libssl-dev
++Build-Conflicts: g++ (<= 10)
++	, gcc (<= 10)
+
+ Package: squid
+ Architecture: any--- debian/rules	2020-02-25 21:37:55.000000000 +0300
++++ debian/rules	2021-04-10 16:22:44.781714757 +0300
+@@ -10,6 +10,7 @@
+ export DEB_LDFLAGS_MAINT_APPEND
+
+ export DEB_BUILD_PARALLEL = yes
++CXX=g++-13
+ CXX_FOR_BUILD ?= $(CXX)
+
+ INSTALLDIR := $(CURDIR)/debian/tmp
+@@ -50,6 +51,9 @@
+ 		--enable-icmp \
+ 		--enable-zph-qos \
+ 		--enable-ecap \
++		--enable-ssl \
++		--enable-ssl-crtd \
++		--with-openssl \
+ 		--disable-translation \
+ 		--with-swapdir=/var/spool/squid \
+ 		--with-logdir=/var/log/squid \
+@@ -81,9 +85,7 @@
+ 	#done
+ 	dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS} \
+ 		--with-gnutls
+-	cd debian/build-openssl && dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS} \
+-		--with-openssl \
+-		--enable-ssl-crtd
++	cd debian/build-openssl && dh_auto_configure -- ${DEB_CONFIGURE_EXTRA_FLAGS}
+
+ override_dh_auto_build:
+ 	dh_auto_build
