@@ -11,7 +11,7 @@ Build scripts for https://launchpad.net/~pczerkas/+archive/ubuntu/squid-extra
 sudo add-apt-repository ppa:pczerkas/squid-extra
 sudo apt update
 
-sudo apt-get -y install squid-openssl=6.5-1ubuntu13+ssl+extra # for Ubuntu Jammy (22.04)
+sudo apt-get -y install squid-openssl=6.10-1ubuntu7+ssl+extra # for Ubuntu Jammy (22.04)
 // or
-sudo apt-get -y install squid-openssl=6.5-1ubuntu10+ssl+extra # for Ubuntu Focal (20.04)
+sudo apt-get -y install squid-openssl=6.10-1ubuntu10+ssl+extra # for Ubuntu Focal (20.04)
 ```

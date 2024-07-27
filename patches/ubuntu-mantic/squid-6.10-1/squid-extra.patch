@@ -1,0 +1,241 @@
+--- a/src/cache_cf.cc
++++ b/src/cache_cf.cc
+@@ -877,6 +877,15 @@
+         }
+
+         for (R = Config.Refresh; R; R = R->next) {
++            if (!R->flags.ignore_must_revalidate)
++                continue;
++
++            debugs(22, DBG_IMPORTANT, "WARNING: use of 'ignore-must-revalidate' in 'refresh_pattern' violates HTTP");
++
++            break;
++        }
++
++        for (R = Config.Refresh; R; R = R->next) {
+             if (!R->flags.ignore_private)
+                 continue;
+
+@@ -884,6 +893,15 @@
+
+             break;
+         }
++
++        for (R = Config.Refresh; R; R = R->next) {
++            if (!R->flags.ignore_auth)
++                continue;
++
++            debugs(22, DBG_IMPORTANT, "WARNING: use of 'ignore-auth' in 'refresh_pattern' violates HTTP");
++
++            break;
++        }
+     }
+ #endif
+ #if !USE_HTTP_VIOLATIONS
+@@ -2723,8 +2741,14 @@
+         if (head->flags.ignore_no_store)
+             storeAppendPrintf(entry, " ignore-no-store");
+
++        if (head->flags.ignore_must_revalidate)
++            storeAppendPrintf(entry, " ignore-must-revalidate");
++
+         if (head->flags.ignore_private)
+             storeAppendPrintf(entry, " ignore-private");
++
++        if (head->flags.ignore_auth)
++            storeAppendPrintf(entry, " ignore-auth");
+ #endif
+
+         storeAppendPrintf(entry, "\n");
+@@ -2751,7 +2775,9 @@
+     int reload_into_ims = 0;
+     int ignore_reload = 0;
+     int ignore_no_store = 0;
++    int ignore_must_revalidate = 0;
+     int ignore_private = 0;
++    int ignore_auth = 0;
+ #endif
+
+     int i;
+@@ -2806,8 +2832,12 @@
+             override_lastmod = 1;
+         else if (!strcmp(token, "ignore-no-store"))
+             ignore_no_store = 1;
++        else if (!strcmp(token, "ignore-must-revalidate"))
++            ignore_must_revalidate = 1;
+         else if (!strcmp(token, "ignore-private"))
+             ignore_private = 1;
++        else if (!strcmp(token, "ignore-auth"))
++            ignore_auth = 1;
+         else if (!strcmp(token, "reload-into-ims")) {
+             reload_into_ims = 1;
+             refresh_nocache_hack = 1;
+@@ -2818,9 +2848,7 @@
+             /* tell client_side.c that this is used */
+ #endif
+
+-        } else if (!strcmp(token, "ignore-no-cache") ||
+-                   !strcmp(token, "ignore-must-revalidate") ||
+-                   !strcmp(token, "ignore-auth")
++        } else if (!strcmp(token, "ignore-no-cache")
+                   ) {
+             debugs(22, DBG_PARSE_NOTE(2), "UPGRADE: refresh_pattern option '" << token << "' is obsolete. Remove it.");
+         } else
+@@ -2859,8 +2887,15 @@
+     if (ignore_no_store)
+         t->flags.ignore_no_store = true;
+
++    if (ignore_must_revalidate)
++        t->flags.ignore_must_revalidate = true;
++
+     if (ignore_private)
+         t->flags.ignore_private = true;
++
++    if (ignore_auth)
++        t->flags.ignore_auth = true;
++
+ #endif
+
+     t->next = nullptr;
+@@ -4957,4 +4992,3 @@
+     delete protoGuards;
+     protoGuards = nullptr;
+ }
+-
+--- a/src/cf.data.pre
++++ b/src/cf.data.pre
+@@ -6470,7 +6470,9 @@
+ 		 reload-into-ims
+ 		 ignore-reload
+ 		 ignore-no-store
++		 ignore-must-revalidate
+ 		 ignore-private
++		 ignore-auth
+ 		 max-stale=NN
+ 		 refresh-ims
+ 		 store-stale
+@@ -6506,11 +6508,22 @@
+ 		the HTTP standard. Enabling this feature could make you
+ 		liable for problems which it causes.
+
++		ignore-must-revalidate ignores any ``Cache-Control: must-revalidate``
++		headers received from a server. Doing this VIOLATES
++		the HTTP standard. Enabling this feature could make you
++		liable for problems which it causes.
++
+ 		ignore-private ignores any ``Cache-control: private''
+ 		headers received from a server. Doing this VIOLATES
+ 		the HTTP standard. Enabling this feature could make you
+ 		liable for problems which it causes.
+
++		ignore-auth caches responses to requests with authorization,
++		irrespective of ``Cache-control'' headers received from
++		a server. Doing this VIOLATES the HTTP standard. Enabling
++		this feature could make you liable for problems which
++		it causes.
++
+ 		refresh-ims causes squid to contact the origin server
+ 		when a client issues an If-Modified-Since request. This
+ 		ensures that the client will receive an updated version
+--- a/src/client_side_reply.cc
++++ b/src/client_side_reply.cc
+@@ -1994,7 +1994,7 @@
+             }
+         }
+
+-        debugs(88, 5, conn->clientConnection <<
++        debugs(88, 9, conn->clientConnection <<
+                " '" << entry->url() << "'" <<
+                " out.offset=" << http->out.offset);
+     }
+@@ -2142,4 +2142,3 @@
+
+     return err;
+ }
+-
+--- a/src/http.cc
++++ b/src/http.cc
+@@ -379,7 +379,7 @@
+
+     // RFC 2068, sec 14.9.4 - MUST NOT cache any response with Authentication UNLESS certain CC controls are present
+     // allow HTTP violations to IGNORE those controls (ie re-block caching Auth)
+-    if (request && (request->flags.auth || request->flags.authSent)) {
++    if (request && (request->flags.auth || request->flags.authSent) && !REFRESH_OVERRIDE(ignore_auth)) {
+         if (!rep->cache_control)
+             return decision.make(ReuseDecision::reuseNot,
+                                  "authenticated and server reply missing Cache-Control");
+@@ -395,7 +395,7 @@
+             mayStore = true;
+
+             // HTTPbis pt6 section 3.2: a response CC:must-revalidate is present
+-        } else if (rep->cache_control->hasMustRevalidate()) {
++        } else if (rep->cache_control->hasMustRevalidate() && !REFRESH_OVERRIDE(ignore_must_revalidate)) {
+             debugs(22, 3, "Authenticated but server reply Cache-Control:must-revalidate");
+             mayStore = true;
+
+@@ -937,6 +937,22 @@
+ void
+ HttpStateData::haveParsedReplyHeaders()
+ {
++#if USE_HTTP_VIOLATIONS
++
++    const RefreshPattern *R = nullptr;
++
++    /* This strange looking define first looks up the refresh pattern
++     * and then checks if the specified flag is set. The main purpose
++     * of this is to simplify the refresh pattern lookup and USE_HTTP_VIOLATIONS
++     * condition
++     */
++#define REFRESH_OVERRIDE(flag) \
++    ((R = (R ? R : refreshLimits(entry->mem_obj->storeId()))) , \
++    (R && R->flags.flag))
++#else
++#define REFRESH_OVERRIDE(flag) 0
++#endif
++
+     Client::haveParsedReplyHeaders();
+
+     HttpReply *rep = finalReply();
+@@ -1040,7 +1056,7 @@
+             // CC:private (yes, these can sometimes be stored)
+             const bool ccPrivate = rep->cache_control->hasPrivate();
+
+-            if (ccNoCacheNoParams || ccPrivate)
++            if (ccNoCacheNoParams || (ccPrivate && !REFRESH_OVERRIDE(ignore_private)))
+                 EBIT_SET(entry->flags, ENTRY_REVALIDATE_ALWAYS);
+             else if (ccMustRevalidate || ccSMaxAge)
+                 EBIT_SET(entry->flags, ENTRY_REVALIDATE_STALE);
+@@ -2650,4 +2666,3 @@
+     return os << ReuseMessages[d.answer] << " because " << d.reason <<
+            "; HTTP status " << d.statusCode << " " << *(d.entry);
+ }
+-
+--- a/src/refresh.cc
++++ b/src/refresh.cc
+@@ -336,6 +336,9 @@
+      */
+     const bool revalidateAlways = EBIT_TEST(entry->flags, ENTRY_REVALIDATE_ALWAYS);
+     if (revalidateAlways || (staleness > -1 &&
++#if USE_HTTP_VIOLATIONS
++                             !R->flags.ignore_must_revalidate &&
++#endif
+                              EBIT_TEST(entry->flags, ENTRY_REVALIDATE_STALE))) {
+         debugs(22, 3, "YES: Must revalidate stale object (origin set " <<
+                (revalidateAlways ? "no-cache or private" :
+@@ -769,4 +772,3 @@
+
+     refreshRegisterWithCacheManager();
+ }
+-
+--- a/src/RefreshPattern.h
++++ b/src/RefreshPattern.h
+@@ -63,7 +63,9 @@
+         bool reload_into_ims;
+         bool ignore_reload;
+         bool ignore_no_store;
++        bool ignore_must_revalidate;
+         bool ignore_private;
++        bool ignore_auth;
+ #endif
+     } flags;
+     int max_stale;

@@ -1,0 +1,11 @@
+--- a/src/acl/BoolOps.cc
++++ b/src/acl/BoolOps.cc
+@@ -17,7 +17,7 @@
+ Acl::NotNode::NotNode(ACL *acl)
+ {
+     assert(acl);
+-    Must(strlen(acl->name) <= sizeof(name)-2);
++    //Must(strlen(acl->name) <= sizeof(name)-2);
+     name[0] = '!';
+     name[1] = '\0';
+     xstrncpy(&name[1], acl->name, sizeof(name)-1); // -1 for '!'
