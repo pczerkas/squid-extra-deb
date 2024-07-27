@@ -1,4 +1,4 @@
-# Squid 5/6 with extra refresh_pattern options
+# Squid with extra refresh_pattern options
 
 Build scripts for https://launchpad.net/~pczerkas/+archive/ubuntu/squid-extra
 
